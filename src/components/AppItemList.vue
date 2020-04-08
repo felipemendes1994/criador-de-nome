@@ -40,7 +40,7 @@ export default {
 				type,
 				description
 			});
-			this.item = "";
+			this.description = "";
 		},
 		deleteItem(description){
 			this.$emit("deleteItem", description);

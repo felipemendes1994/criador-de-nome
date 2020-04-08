@@ -17,8 +17,9 @@
 						<ul class="list-group">
 							<li class="list-group-item" v-for="domain in domains" v-bind:key="domain.name">
 								<div class="row">
-									<div class="col-md">{{ domain.name }}</div>
-									<div class="col-md text-right">
+									<div class="col-md-6">{{ domain.name }}</div>
+									<div class="col-md-3"><span v-bind:class="domain.classes">{{ domain.available }}</span></div>
+									<div class="col-md-3 text-right">
 										<a class="btn btn-info" v-bind:href="domain.checkout" target="_blank"><span
 												class="fa fa-shopping-cart"></span></a>
 									</div>
@@ -48,7 +49,8 @@ export default {
 			items: {
 				prefix: [],
 				sufix: []
-			}
+			},
+			domains: []
 		};
 	},
 	methods: {
@@ -74,6 +76,7 @@ export default {
 				const query = response.data;
 				const item = query.data.item;
 				this.items[item.type].push(item);
+				this.generateDomains();
 			});
 		},
 		deleteItem(item){
@@ -91,11 +94,12 @@ export default {
 					}
 				}
 			}).then(() => {
-				this.getItems(item.type);
+				this.items[item.type].splice(this.items[item.type].indexOf(item), 1);
+				this.generateDomains();
 			});
 		},
 		getItems(type){
-			axios({
+			return axios({
 				url:"http://localhost:4000",
 				method: "post",
 				data: {
@@ -116,27 +120,43 @@ export default {
 			}).then(response => {
 				this.items[type] = response.data.data.items;
 			});
-		}
-	},
-	computed: {
-		domains() {
-			const domains = [];
-			for(const prefix of this.items.prefix){
-				for(const sufix of this.items.sufix){
-					const name = prefix.description + sufix.description;
-					const checkout = `https://checkout.hostgator.com.br/?a=add&sld=${name.toLowerCase()}&tld=.com.br`;
-					domains.push({
-						name,
-						checkout
-					});
+		},
+		generateDomains(){
+			return axios({
+				url:"http://localhost:4000",
+				method: "post",
+				data: {
+					query: `
+						mutation {
+							domains: generateDomains {
+								name
+								checkout
+								available
+							}
+						}
+					`
+
 				}
-			}
-			return domains;
+			}).then(response => {
+				const query = response.data;
+				this.domains = query.data.domains.map(domain => {
+					return {
+						name: domain.name,
+						checkout: domain.checkout,
+						available: (domain.available) ? "Disponível" : "Indisponível",
+						classes: (domain.available) ? "badge badge-success" : "badge badge-secondary"
+					};
+				});
+			});
 		}
 	},
 	created(){
-		this.getItems("prefix");
-		this.getItems("sufix");
+		Promise.all([
+			this.getItems("prefix"),
+			this.getItems("sufix")
+		]).then(() => {
+			this.generateDomains();
+		});
 	}
 };
 
