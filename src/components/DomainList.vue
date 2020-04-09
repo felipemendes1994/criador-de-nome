@@ -20,8 +20,8 @@
 									<div class="col-md-6">{{ domain.name }}</div>
 									<div class="col-md-3"><span v-bind:class="domain.classes">{{ domain.available }}</span></div>
 									<div class="col-md-3 text-right">
-										<a class="btn btn-info" v-bind:href="domain.checkout" target="_blank"><span
-												class="fa fa-shopping-cart"></span></a>
+										<button class="btn btn-info" @click="openDomain(domain)"><span class="fa fa-search"></span></button>&nbsp;
+										<a class="btn btn-info" v-bind:href="domain.checkout" target="_blank"><span class="fa fa-shopping-cart"></span></a>
 									</div>
 								</div>
 							</li>
@@ -34,10 +34,10 @@
 </template>
 
 <script>
+import { mapState, mapActions } from "vuex";
 import "bootstrap/dist/css/bootstrap.css";
 import "font-awesome/css/font-awesome.css";
 import AppItemList from "./AppItemList";
-import axios from "axios/dist/axios";
 
 export default {
 	name: "App",
@@ -45,118 +45,18 @@ export default {
 		AppItemList
 	},
 	data: function() {
-		return {
-			items: {
-				prefix: [],
-				sufix: []
-			},
-			domains: []
-		};
+		return {};
 	},
 	methods: {
-		addItem(item){
-			axios({
-				url: "http://localhost:4000",
-				method: "post",
-				data: {
-					query: `
-						mutation ($item: ItemInput) {
-							item: saveItem(item: $item){
-								id,
-								type,
-								description
-							}
-						}
-					`,
-					variables: {
-						item
-					}
-				}
-			}).then(response => {
-				const query = response.data;
-				const item = query.data.item;
-				this.items[item.type].push(item);
-				this.generateDomains();
-			});
-		},
-		deleteItem(item){
-			axios({
-				url: "http://localhost:4000",
-				method: "post",
-				data: {
-					query: `
-						mutation ($id: Int) {
-							deleteItem(id: $id)
-						}
-					`,
-					variables: {
-						id: item.id
-					}
-				}
-			}).then(() => {
-				this.items[item.type].splice(this.items[item.type].indexOf(item), 1);
-				this.generateDomains();
-			});
-		},
-		getItems(type){
-			return axios({
-				url:"http://localhost:4000",
-				method: "post",
-				data: {
-					query: `
-						query ($type: String) {
-							items: items (type: $type) {
-								id
-								type
-								description
-							}
-						}
-					`,
-					variables:{
-						type
-					}
-
-				}
-			}).then(response => {
-				this.items[type] = response.data.data.items;
-			});
-		},
-		generateDomains(){
-			return axios({
-				url:"http://localhost:4000",
-				method: "post",
-				data: {
-					query: `
-						mutation {
-							domains: generateDomains {
-								name
-								checkout
-								available
-							}
-						}
-					`
-
-				}
-			}).then(response => {
-				const query = response.data;
-				this.domains = query.data.domains.map(domain => {
-					return {
-						name: domain.name,
-						checkout: domain.checkout,
-						available: (domain.available) ? "Disponível" : "Indisponível",
-						classes: (domain.available) ? "badge badge-success" : "badge badge-secondary"
-					};
-				});
+		...mapActions(["addItem","deleteItem","getItems","generateDomains"]),
+		openDomain(domain){
+			this.$router.push({
+				path: `/domains/${domain.name}`
 			});
 		}
 	},
-	created(){
-		Promise.all([
-			this.getItems("prefix"),
-			this.getItems("sufix")
-		]).then(() => {
-			this.generateDomains();
-		});
+	computed: {
+		...mapState(["items","domains"])
 	}
 };
 
